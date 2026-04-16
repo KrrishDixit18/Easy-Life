@@ -1,0 +1,7 @@
+{
+  "name": "EasyLife",
+  "description": "An AI-powered task manager with voice conversion, smart suggestions, and habit-based reminders.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

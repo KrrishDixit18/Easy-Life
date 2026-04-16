@@ -1,0 +1,47 @@
+{
+  "entities": {
+    "Task": {
+      "title": "Task",
+      "description": "A user task with AI-enhanced properties.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "priority": { "type": "string", "enum": ["low", "medium", "high"] },
+        "completed": { "type": "boolean" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" },
+        "repeatType": { "type": "string", "enum": ["none", "daily", "weekly"] },
+        "timeSpent": { "type": "number" },
+        "isTimerRunning": { "type": "boolean" },
+        "timerStartTime": { "type": "number" }
+      },
+      "required": ["id", "userId", "title", "priority", "completed", "createdAt"]
+    },
+    "UserHabit": {
+      "title": "UserHabit",
+      "description": "A habit tracked by the user.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "frequency": { "type": "number" },
+        "lastPerformed": { "type": "number" }
+      },
+      "required": ["id", "userId", "name", "frequency"]
+    }
+  },
+  "firestore": {
+    "/tasks/{taskId}": {
+      "schema": "Task",
+      "description": "User tasks collection."
+    },
+    "/habits/{habitId}": {
+      "schema": "UserHabit",
+      "description": "User habits collection."
+    }
+  }
+}

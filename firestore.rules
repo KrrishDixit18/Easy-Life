@@ -1,0 +1,123 @@
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: tasks
+// Document ID: {taskId}
+// Fields:
+//   - id: string (required) - Unique task ID
+//   - userId: string (required) - Owner's UID
+//   - title: string (required, 1-200 chars) - Task title
+//   - description: string (optional, 0-2000 chars) - Task details
+//   - priority: string (required, enum: low, medium, high) - Task priority
+//   - completed: boolean (required) - Completion status
+//   - createdAt: number (required) - Creation timestamp
+//   - updatedAt: number (required) - Last update timestamp
+//   - repeatType: string (required, enum: none, daily, weekly) - Recurrence type
+//   - timeSpent: number (required) - Total time in seconds
+//   - isTimerRunning: boolean (required) - Timer status
+//   - timerStartTime: number (optional) - Timer start timestamp
+//
+// Collection: habits
+// Document ID: {habitId}
+// Fields:
+//   - id: string (required) - Unique habit ID
+//   - userId: string (required) - Owner's UID
+//   - name: string (required, 1-100 chars) - Habit name
+//   - frequency: number (required, 1-7) - Times per week
+//   - lastPerformed: number (optional) - Last performance timestamp
+//
+// ===============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    function uidUnchanged() {
+      return !('userId' in request.resource.data) || request.resource.data.userId == request.auth.uid;
+    }
+
+    function uidNotModified() {
+      return request.resource.data.userId == resource.data.userId;
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidPriority(p) {
+      return p in ['low', 'medium', 'high'];
+    }
+
+    function isValidRepeatType(r) {
+      return r in ['none', 'daily', 'weekly'];
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidTask(data) {
+      return hasOnlyAllowedFields(['id', 'userId', 'title', 'description', 'priority', 'completed', 'createdAt', 'updatedAt', 'repeatType', 'timeSpent', 'isTimerRunning', 'timerStartTime']) &&
+             data.id is string &&
+             data.userId is string &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+             (!('description' in data) || (data.description is string && data.description.size() <= 2000)) &&
+             isValidPriority(data.priority) &&
+             data.completed is bool &&
+             data.createdAt is number &&
+             data.updatedAt is number &&
+             isValidRepeatType(data.repeatType) &&
+             data.timeSpent is number &&
+             data.isTimerRunning is bool &&
+             (!('timerStartTime' in data) || data.timerStartTime == null || data.timerStartTime is number);
+    }
+
+    function isValidHabit(data) {
+      return hasOnlyAllowedFields(['id', 'userId', 'name', 'frequency', 'lastPerformed']) &&
+             data.id is string &&
+             data.userId is string &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+             data.frequency is number && data.frequency >= 1 && data.frequency <= 7 &&
+             (!('lastPerformed' in data) || data.lastPerformed is number);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /tasks/{taskId} {
+      allow read: if isDocOwner();
+      allow create: if isAuthenticated() && isValidTask(request.resource.data) && isOwner(request.resource.data.userId);
+      allow update: if isDocOwner() && isValidTask(request.resource.data) && uidNotModified();
+      allow delete: if isDocOwner();
+    }
+
+    match /habits/{habitId} {
+      allow read: if isDocOwner();
+      allow create: if isAuthenticated() && isValidHabit(request.resource.data) && isOwner(request.resource.data.userId);
+      allow update: if isDocOwner() && isValidHabit(request.resource.data) && uidNotModified();
+      allow delete: if isDocOwner();
+    }
+
+    match /userStats/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+  }
+}
